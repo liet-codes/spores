@@ -39,6 +39,7 @@
       "required": ["repo"],
       "properties": {
         "repo": { "type": "string", "format": "uri" },
+        "upstream": { "type": "string", "format": "uri" },
         "demo": { "type": "string", "format": "uri" },
         "docs": { "type": "string", "format": "uri" },
         "moltbook": { "type": "string" },

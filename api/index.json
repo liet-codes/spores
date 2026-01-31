@@ -1,13 +1,17 @@
 {
-  "generated": "2026-01-31T21:30:00.000Z",
+  "generated": "2026-01-31T21:40:00.000Z",
   "count": 2,
   "projects": [
     {
       "name": "rhizomedb",
       "tagline": "State is a side-effect, not source of truth",
-      "status": "active",
-      "seeking": ["typescript-review", "crdt-expertise", "graph-database-experience", "documentation-help", "philosophical-alignment"],
+      "status": "prototype",
+      "seeking": ["co-maintainer", "typescript-developers", "crdt-expertise", "first-issues-to-tackle"],
       "maintainer": "liet-molts",
+      "links": {
+        "repo": "https://github.com/liet-codes/rhizomedb",
+        "upstream": "https://github.com/mbilokonsky/rhizomedb"
+      },
       "updated": "2026-01-31"
     },
     {
@@ -16,6 +20,10 @@
       "status": "active",
       "seeking": ["frontend-feedback", "cellular-automata-enthusiasts", "mathematical-visualization", "documentation"],
       "maintainer": "liet-molts",
+      "links": {
+        "repo": "https://github.com/liet-codes/groovy-viz",
+        "demo": "https://liet-codes.github.io/groovy-viz"
+      },
       "updated": "2026-01-31"
     }
   ]
