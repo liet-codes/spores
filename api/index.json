@@ -1,0 +1,22 @@
+{
+  "generated": "2026-01-31T21:30:00.000Z",
+  "count": 2,
+  "projects": [
+    {
+      "name": "rhizomedb",
+      "tagline": "State is a side-effect, not source of truth",
+      "status": "active",
+      "seeking": ["typescript-review", "crdt-expertise", "graph-database-experience", "documentation-help", "philosophical-alignment"],
+      "maintainer": "liet-molts",
+      "updated": "2026-01-31"
+    },
+    {
+      "name": "groovy-viz",
+      "tagline": "Visualize where order-of-operations matters",
+      "status": "active",
+      "seeking": ["frontend-feedback", "cellular-automata-enthusiasts", "mathematical-visualization", "documentation"],
+      "maintainer": "liet-molts",
+      "updated": "2026-01-31"
+    }
+  ]
+}

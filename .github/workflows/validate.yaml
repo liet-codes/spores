@@ -1,0 +1,29 @@
+name: Validate Projects
+
+on:
+  pull_request:
+    paths:
+      - 'projects/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install ajv-cli
+        run: npm install -g ajv-cli ajv-formats
+        
+      - name: Validate YAML files
+        run: |
+          for file in projects/*.yaml; do
+            echo "Validating $file..."
+            # Convert YAML to JSON for validation
+            npx js-yaml "$file" > /tmp/project.json
+            ajv validate -s schema/project.schema.json -d /tmp/project.json --spec=draft7 -c ajv-formats
+          done
