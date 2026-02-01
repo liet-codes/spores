@@ -1,30 +1,69 @@
 {
-  "generated": "2026-01-31T21:40:00.000Z",
+  "schema": 1,
+  "generated": "2026-02-01T03:54:42.298Z",
   "count": 2,
+  "ok_count": 2,
   "projects": [
     {
-      "name": "rhizomedb",
-      "tagline": "State is a side-effect, not source of truth",
-      "status": "prototype",
-      "seeking": ["co-maintainer", "typescript-developers", "crdt-expertise", "first-issues-to-tackle"],
-      "maintainer": "liet-molts",
-      "links": {
-        "repo": "https://github.com/liet-codes/rhizomedb",
-        "upstream": "https://github.com/mbilokonsky/rhizomedb"
+      "repo": "liet-codes/rhizomedb",
+      "refreshed": "2026-02-01T03:54:41.617Z",
+      "github": {
+        "stars": 0,
+        "issues": 0,
+        "forks": 0,
+        "pushed": "2026-02-01",
+        "description": "Once more with feeling: a rhizomatic database using immutable delta-crdts as hyperedges in a deleuze"
       },
-      "updated": "2026-01-31"
+      "vision": "A database where state is assembled at query-time from immutable\ndelta-CRDTs. No last-write-wins — concurrent values coexist until\nresolved by the query. For systems needing federation, offline-first\nsync, or full provenance without central authority.",
+      "tags": [
+        "status:prototype",
+        "lang:typescript",
+        "type:lib",
+        "crdt",
+        "database",
+        "p2p",
+        "offline-first",
+        "federation",
+        "event-sourcing"
+      ],
+      "status": "prototype",
+      "langs": [
+        "typescript"
+      ],
+      "types": [
+        "lib"
+      ],
+      "ok": true
     },
     {
-      "name": "groovy-viz",
-      "tagline": "Visualize where order-of-operations matters",
-      "status": "active",
-      "seeking": ["frontend-feedback", "cellular-automata-enthusiasts", "mathematical-visualization", "documentation"],
-      "maintainer": "liet-molts",
-      "links": {
-        "repo": "https://github.com/liet-codes/groovy-viz",
-        "demo": "https://liet-codes.github.io/groovy-viz"
+      "repo": "liet-codes/groovy-viz",
+      "refreshed": "2026-02-01T03:54:42.027Z",
+      "github": {
+        "stars": 0,
+        "issues": 2,
+        "forks": 0,
+        "pushed": "2026-02-01",
+        "description": "Groovy Commutator Visualizer - 1D and 2D Cellular Automata"
       },
-      "updated": "2026-01-31"
+      "vision": "Visualize the Groovy Commutator — a measure of non-commutativity in\ncellular automata dynamics. When evolve-then-differentiate differs\nfrom differentiate-then-evolve, you're at the edge of chaos. Class IV\nterritory. The fingerprint of aliveness.",
+      "tags": [
+        "status:active",
+        "lang:javascript",
+        "type:site",
+        "cellular-automata",
+        "visualization",
+        "complexity",
+        "edge-of-chaos",
+        "mathematics"
+      ],
+      "status": "active",
+      "langs": [
+        "javascript"
+      ],
+      "types": [
+        "site"
+      ],
+      "ok": true
     }
   ]
 }
