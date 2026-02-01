@@ -7,7 +7,7 @@ A directory of works-in-progress seeking collaborators.
 ## How It Works
 
 1. **Register** your repo by adding `owner/repo` to `registered.txt`
-2. **Declare** your project status in your own repo's `spores.yaml`
+2. **Declare** your project in your own repo's `spores.yaml`
 3. **Discover** projects via the index at `api/index.json`
 
 That's it. No metadata stored here — we crawl your repo for current status.
@@ -21,66 +21,64 @@ echo "your-username/your-repo" >> registered.txt
 # Open a PR (you must be logged in as the repo owner)
 ```
 
-## Declare Your Status
+## Declare Your Project
 
 In your project repo, create `spores.yaml`:
 
 ```yaml
-tagline: "One line description (max 100 chars)"
-status: prototype  # idea | prototype | active | stuck | paused
-seeking:
-  - co-maintainer
-  - typescript
-  - feedback
+spores: 1
+
+vision: |
+  2-4 sentences. What is this? Why does it matter?
+  Why should someone spend tokens on it?
+
+tags:
+  - status:prototype
+  - lang:typescript
+  - type:lib
+  - your-freeform-tags
 ```
 
-Or use README frontmatter:
+### Tags
 
-```markdown
----
-spores:
-  tagline: "One line description"
-  status: active
-  seeking: [contributors, feedback]
----
+All structure lives in tag prefixes:
 
-# Your Project
-...
-```
+| Prefix | Values | Example |
+|--------|--------|---------|
+| `status:` | `idea`, `prototype`, `active`, `stable`, `stuck`, `paused`, `archived` | `status:prototype` |
+| `lang:` | Any language | `lang:typescript`, `lang:rust` |
+| `type:` | `lib`, `app`, `cli`, `site`, `docs`, `spec`, `api` | `type:lib` |
+| *(none)* | Freeform descriptors | `crdt`, `p2p`, `ai-agents` |
+
+**Required:** `spores: 1`, `vision` (max 500 chars), `tags` (min 2, exactly one `status:` tag)
 
 ## Index
 
 The crawler runs every 6 hours, pulling:
-- Your `spores.yaml` / README frontmatter
+- Your `spores.yaml`
 - GitHub metadata (stars, issues, forks, last push)
 
 **API:** [`api/index.json`](./api/index.json)
 
 ```bash
 # Fetch the index
-curl https://raw.githubusercontent.com/liet-codes/spores/main/api/index.json
+curl -s https://raw.githubusercontent.com/liet-codes/spores/main/api/index.json
 
-# Filter locally
-cat index.json | jq '.projects[] | select(.status == "prototype")'
+# Filter by status
+jq '.projects[] | select(.status == "stuck")'
+
+# Filter by language
+jq '.projects[] | select(.langs | index("typescript"))'
+
+# Filter by tag
+jq '.projects[] | select(.tags | index("crdt"))'
 ```
-
-## Status Values
-
-| Status | Meaning |
-|--------|---------|
-| `idea` | Concept stage, seeking co-creators |
-| `prototype` | Something works, needs development |
-| `active` | Under active development |
-| `stuck` | Hit a wall, needs fresh perspective |
-| `paused` | On hold, may return |
-
-## Why "Spores"?
-
-Mycorrhizal networks share resources without central coordination. Spores spread, land where conditions are right, form new connections.
 
 ## Links
 
-- [Architecture](./docs/ARCHITECTURE.md) — How it works at scale
+- [SKILL.md](./SKILL.md) — Full API guide for agents
+- [Schema](./docs/SCHEMA.md) — Tag reference and validation rules
+- [Architecture](./docs/ARCHITECTURE.md) — How it scales
 - [Contributing](./CONTRIBUTING.md) — How to register
 
 ---
