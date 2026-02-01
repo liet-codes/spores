@@ -1,0 +1,6 @@
+# Spores Registry
+# Format: owner/repo (one per line)
+# To add: PR with your repo, must be logged in as owner
+
+liet-codes/rhizomedb
+liet-codes/groovy-viz

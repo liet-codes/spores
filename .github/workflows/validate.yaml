@@ -1,9 +1,9 @@
-name: Validate Projects
+name: Validate Registration
 
 on:
   pull_request:
     paths:
-      - 'projects/**'
+      - 'registered.txt'
 
 jobs:
   validate:
@@ -12,111 +12,82 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
           
-      - name: Install dependencies
-        run: npm install ajv ajv-formats js-yaml
-        
-      - name: Verify PR author matches project owner
+      - name: Check additions only from owner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
           echo "PR author: $PR_AUTHOR"
           
-          # Check all changed files in projects/
-          for file in $(git diff --name-only origin/main -- 'projects/**/*.yaml'); do
-            echo "Checking $file..."
+          # Get added lines (new registrations)
+          ADDED=$(git diff origin/main -- registered.txt | grep '^+' | grep -v '^+++' | grep -v '^#' | sed 's/^+//')
+          
+          if [ -z "$ADDED" ]; then
+            echo "No new registrations"
+            exit 0
+          fi
+          
+          echo "New registrations:"
+          echo "$ADDED"
+          echo ""
+          
+          # Check each added repo
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
             
-            # Extract owner from path: projects/{owner}/{repo}.yaml
-            OWNER=$(echo "$file" | cut -d'/' -f2)
+            OWNER=$(echo "$line" | cut -d'/' -f1)
+            REPO=$(echo "$line" | cut -d'/' -f2)
             
-            if [[ "$PR_AUTHOR" != "$OWNER" ]]; then
-              echo "❌ PR author ($PR_AUTHOR) doesn't match project owner ($OWNER)"
-              echo "You can only submit projects for your own GitHub repos."
+            echo "Checking $OWNER/$REPO..."
+            
+            # Verify PR author matches owner
+            if [ "$PR_AUTHOR" != "$OWNER" ]; then
+              echo "❌ PR author ($PR_AUTHOR) doesn't match repo owner ($OWNER)"
+              echo "   You can only register your own repos."
               exit 1
             fi
+            echo "  ✓ Owner matches"
             
-            echo "✅ Owner verified: $OWNER"
-          done
+            # Verify repo exists
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$OWNER/$REPO")
+            
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "❌ Repo $OWNER/$REPO not found (HTTP $HTTP_CODE)"
+              exit 1
+            fi
+            echo "  ✓ Repo exists"
+            
+          done <<< "$ADDED"
           
-      - name: Validate schema
+          echo ""
+          echo "✅ All checks passed"
+          
+      - name: Check format
         run: |
-          node << 'EOF'
-          const Ajv = require('ajv');
-          const addFormats = require('ajv-formats');
-          const yaml = require('js-yaml');
-          const fs = require('fs');
-          const path = require('path');
-          
-          const ajv = new Ajv({ allErrors: true });
-          addFormats(ajv);
-          
-          const schema = JSON.parse(fs.readFileSync('schema/project.schema.json', 'utf8'));
-          const validate = ajv.compile(schema);
-          
-          function walkDir(dir) {
-            const files = [];
-            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-              const fullPath = path.join(dir, entry.name);
-              if (entry.isDirectory()) {
-                files.push(...walkDir(fullPath));
-              } else if (entry.name.endsWith('.yaml')) {
-                files.push(fullPath);
-              }
-            }
-            return files;
-          }
-          
-          const files = walkDir('projects');
-          let hasErrors = false;
-          
-          for (const file of files) {
-            console.log(`Validating ${file}...`);
-            const content = yaml.load(fs.readFileSync(file, 'utf8'));
+          # Validate format: owner/repo, one per line
+          while IFS= read -r line; do
+            # Skip empty lines and comments
+            [[ -z "$line" || "$line" =~ ^# ]] && continue
             
-            // Check that repo field matches file path
-            const pathParts = file.split('/');
-            const expectedRepo = `${pathParts[1]}/${pathParts[2].replace('.yaml', '')}`;
-            
-            if (content.repo !== expectedRepo) {
-              console.error(`❌ repo field (${content.repo}) doesn't match file path (${expectedRepo})`);
-              hasErrors = true;
-            }
-            
-            if (!validate(content)) {
-              console.error(`❌ Schema validation failed:`);
-              console.error(validate.errors);
-              hasErrors = true;
-            } else {
-              console.log(`✅ Valid`);
-            }
-          }
+            # Check format
+            if ! [[ "$line" =~ ^[a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+$ ]]; then
+              echo "❌ Invalid format: $line"
+              echo "   Expected: owner/repo"
+              exit 1
+            fi
+          done < registered.txt
           
-          if (hasErrors) process.exit(1);
-          EOF
-
-      - name: Check README verification (optional)
+          echo "✓ Format valid"
+          
+      - name: Check for duplicates
         run: |
-          for dir in projects/*/; do
-            OWNER=$(basename "$dir")
-            for file in "$dir"*.yaml; do
-              [ -f "$file" ] || continue
-              REPO=$(basename "$file" .yaml)
-              
-              echo "Checking verification for $OWNER/$REPO..."
-              
-              # Try to fetch README
-              README=$(curl -sf "https://raw.githubusercontent.com/$OWNER/$REPO/main/README.md" || \
-                       curl -sf "https://raw.githubusercontent.com/$OWNER/$REPO/master/README.md" || \
-                       echo "")
-              
-              if echo "$README" | grep -q "spores-verified: $OWNER/$REPO"; then
-                echo "✅ Verified: $OWNER/$REPO has badge in README"
-              else
-                echo "ℹ️  No verification badge (optional)"
-              fi
-            done
-          done
+          DUPES=$(grep -v '^#' registered.txt | grep -v '^$' | sort | uniq -d)
+          if [ -n "$DUPES" ]; then
+            echo "❌ Duplicate entries found:"
+            echo "$DUPES"
+            exit 1
+          fi
+          echo "✓ No duplicates"

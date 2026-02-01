@@ -1,0 +1,164 @@
+name: Crawl & Build Index
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches: [main]
+    paths:
+      - 'registered.txt'
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm install js-yaml
+        
+      - name: Crawl registered repos
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node << 'EOF'
+          const fs = require('fs');
+          const yaml = require('js-yaml');
+
+          const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+          
+          async function fetchJSON(url) {
+            const res = await fetch(url, {
+              headers: GITHUB_TOKEN ? { 'Authorization': `token ${GITHUB_TOKEN}` } : {}
+            });
+            if (!res.ok) return null;
+            return res.json();
+          }
+          
+          async function fetchText(url) {
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            return res.text();
+          }
+          
+          function extractFrontmatter(content) {
+            if (!content) return null;
+            
+            // Try YAML frontmatter in markdown
+            const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+            if (fmMatch) {
+              try {
+                const fm = yaml.load(fmMatch[1]);
+                return fm.spores || fm;
+              } catch (e) {}
+            }
+            
+            // Try parsing as pure YAML (spores.yaml)
+            try {
+              return yaml.load(content);
+            } catch (e) {}
+            
+            return null;
+          }
+          
+          async function crawlRepo(repo) {
+            const [owner, name] = repo.split('/');
+            const entry = { repo, refreshed: new Date().toISOString() };
+            
+            // Fetch GitHub metadata
+            const meta = await fetchJSON(`https://api.github.com/repos/${repo}`);
+            if (!meta) {
+              return { ...entry, ok: false, error: 'repo not found' };
+            }
+            
+            entry.github = {
+              stars: meta.stargazers_count,
+              issues: meta.open_issues_count,
+              forks: meta.forks_count,
+              pushed: meta.pushed_at?.split('T')[0]
+            };
+            
+            // Try spores.yaml first
+            let frontmatter = null;
+            const sporesYaml = await fetchText(
+              `https://raw.githubusercontent.com/${repo}/${meta.default_branch}/spores.yaml`
+            );
+            if (sporesYaml) {
+              frontmatter = extractFrontmatter(sporesYaml);
+            }
+            
+            // Fall back to README frontmatter
+            if (!frontmatter) {
+              const readme = await fetchText(
+                `https://raw.githubusercontent.com/${repo}/${meta.default_branch}/README.md`
+              );
+              frontmatter = extractFrontmatter(readme);
+            }
+            
+            if (!frontmatter) {
+              return { ...entry, ok: false, error: 'no frontmatter' };
+            }
+            
+            // Extract fields
+            entry.tagline = (frontmatter.tagline || '').slice(0, 100);
+            entry.status = frontmatter.status;
+            entry.seeking = frontmatter.seeking || [];
+            entry.ok = true;
+            
+            return entry;
+          }
+          
+          async function main() {
+            const registered = fs.readFileSync('registered.txt', 'utf8')
+              .split('\n')
+              .map(line => line.trim())
+              .filter(line => line && !line.startsWith('#'));
+            
+            console.log(`Crawling ${registered.length} repos...`);
+            
+            const projects = [];
+            for (const repo of registered) {
+              console.log(`  ${repo}...`);
+              const entry = await crawlRepo(repo);
+              console.log(`    ${entry.ok ? '✓' : '✗'} ${entry.error || ''}`);
+              projects.push(entry);
+              
+              // Rate limit: 100ms between requests
+              await new Promise(r => setTimeout(r, 100));
+            }
+            
+            // Sort: ok first, then by stars
+            projects.sort((a, b) => {
+              if (a.ok !== b.ok) return a.ok ? -1 : 1;
+              return (b.github?.stars || 0) - (a.github?.stars || 0);
+            });
+            
+            const index = {
+              generated: new Date().toISOString(),
+              count: projects.length,
+              ok_count: projects.filter(p => p.ok).length,
+              projects
+            };
+            
+            fs.mkdirSync('api', { recursive: true });
+            fs.writeFileSync('api/index.json', JSON.stringify(index, null, 2));
+            
+            console.log(`\nBuilt index: ${index.ok_count}/${index.count} projects OK`);
+          }
+          
+          main().catch(console.error);
+          EOF
+          
+      - name: Commit index
+        run: |
+          git config user.name "spores-bot"
+          git config user.email "bot@spores.dev"
+          git add api/index.json
+          git diff --staged --quiet || git commit -m "chore: update index [skip ci]"
+          git push
