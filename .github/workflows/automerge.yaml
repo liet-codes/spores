@@ -1,0 +1,66 @@
+name: Auto-merge Valid Registrations
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'registered.txt'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    # Only run after validation passes
+    needs: []  # Could add validation job as dependency
+    if: github.event.pull_request.mergeable != false
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Check if PR only adds registrations
+        id: check
+        run: |
+          # Get the diff
+          DIFF=$(git diff origin/main -- registered.txt)
+          
+          # Check for deletions (lines starting with -)
+          DELETIONS=$(echo "$DIFF" | grep '^-' | grep -v '^---' | grep -v '^#' || true)
+          
+          if [ -n "$DELETIONS" ]; then
+            # Allow self-removal (owner removing their own repo)
+            PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+            
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              REMOVED_REPO=$(echo "$line" | sed 's/^-//')
+              OWNER=$(echo "$REMOVED_REPO" | cut -d'/' -f1)
+              
+              if [ "$PR_AUTHOR" != "$OWNER" ]; then
+                echo "❌ Cannot remove $REMOVED_REPO (not owner)"
+                echo "automerge=false" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            done <<< "$DELETIONS"
+          fi
+          
+          echo "automerge=true" >> $GITHUB_OUTPUT
+          
+      - name: Wait for checks
+        if: steps.check.outputs.automerge == 'true'
+        run: sleep 30  # Give validation workflow time to run
+        
+      - name: Auto-merge
+        if: steps.check.outputs.automerge == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Enable auto-merge
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --auto \
+            --squash \
+            --subject "register: ${{ github.event.pull_request.user.login }}"

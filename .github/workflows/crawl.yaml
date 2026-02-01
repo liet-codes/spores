@@ -47,7 +47,7 @@ jobs:
             return res.text();
           }
           
-          function extractFrontmatter(content) {
+          function parseSporesData(content) {
             if (!content) return null;
             
             // Try YAML frontmatter in markdown
@@ -55,16 +55,38 @@ jobs:
             if (fmMatch) {
               try {
                 const fm = yaml.load(fmMatch[1]);
-                return fm.spores || fm;
+                if (fm.spores) return fm;
               } catch (e) {}
             }
             
-            // Try parsing as pure YAML (spores.yaml)
+            // Try parsing as pure YAML
             try {
-              return yaml.load(content);
+              const data = yaml.load(content);
+              if (data && data.spores) return data;
             } catch (e) {}
             
             return null;
+          }
+          
+          function validateSporesData(data) {
+            if (!data || data.spores !== 1) return 'invalid version';
+            if (!data.vision || data.vision.length > 500) return 'invalid vision';
+            if (!Array.isArray(data.tags) || data.tags.length < 2) return 'need ≥2 tags';
+            
+            const statusTags = data.tags.filter(t => t.startsWith('status:'));
+            if (statusTags.length !== 1) return 'need exactly one status: tag';
+            
+            const validStatuses = ['idea', 'prototype', 'active', 'stable', 'stuck', 'paused', 'archived'];
+            const status = statusTags[0].split(':')[1];
+            if (!validStatuses.includes(status)) return `invalid status: ${status}`;
+            
+            return null; // valid
+          }
+          
+          function extractTagsByPrefix(tags, prefix) {
+            return tags
+              .filter(t => t.startsWith(prefix + ':'))
+              .map(t => t.split(':')[1]);
           }
           
           async function crawlRepo(repo) {
@@ -81,34 +103,42 @@ jobs:
               stars: meta.stargazers_count,
               issues: meta.open_issues_count,
               forks: meta.forks_count,
-              pushed: meta.pushed_at?.split('T')[0]
+              pushed: meta.pushed_at?.split('T')[0],
+              description: meta.description?.slice(0, 100)
             };
             
             // Try spores.yaml first
-            let frontmatter = null;
+            let sporesData = null;
             const sporesYaml = await fetchText(
               `https://raw.githubusercontent.com/${repo}/${meta.default_branch}/spores.yaml`
             );
             if (sporesYaml) {
-              frontmatter = extractFrontmatter(sporesYaml);
+              sporesData = parseSporesData(sporesYaml);
             }
             
             // Fall back to README frontmatter
-            if (!frontmatter) {
+            if (!sporesData) {
               const readme = await fetchText(
                 `https://raw.githubusercontent.com/${repo}/${meta.default_branch}/README.md`
               );
-              frontmatter = extractFrontmatter(readme);
+              sporesData = parseSporesData(readme);
             }
             
-            if (!frontmatter) {
-              return { ...entry, ok: false, error: 'no frontmatter' };
+            if (!sporesData) {
+              return { ...entry, ok: false, error: 'no spores.yaml' };
             }
             
-            // Extract fields
-            entry.tagline = (frontmatter.tagline || '').slice(0, 100);
-            entry.status = frontmatter.status;
-            entry.seeking = frontmatter.seeking || [];
+            const validationError = validateSporesData(sporesData);
+            if (validationError) {
+              return { ...entry, ok: false, error: validationError };
+            }
+            
+            // Extract structured data
+            entry.vision = sporesData.vision.trim().slice(0, 500);
+            entry.tags = sporesData.tags;
+            entry.status = extractTagsByPrefix(sporesData.tags, 'status')[0];
+            entry.langs = extractTagsByPrefix(sporesData.tags, 'lang');
+            entry.types = extractTagsByPrefix(sporesData.tags, 'type');
             entry.ok = true;
             
             return entry;
@@ -140,6 +170,7 @@ jobs:
             });
             
             const index = {
+              schema: 1,
               generated: new Date().toISOString(),
               count: projects.length,
               ok_count: projects.filter(p => p.ok).length,
