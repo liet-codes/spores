@@ -1,0 +1,84 @@
+name: Build Index
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'projects/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm install js-yaml
+        
+      - name: Build index
+        run: |
+          node << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const yaml = require('js-yaml');
+          
+          function walkDir(dir) {
+            const files = [];
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const fullPath = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                files.push(...walkDir(fullPath));
+              } else if (entry.name.endsWith('.yaml')) {
+                files.push(fullPath);
+              }
+            }
+            return files;
+          }
+          
+          const projects = [];
+          const files = walkDir('projects');
+          
+          for (const file of files) {
+            const content = fs.readFileSync(file, 'utf8');
+            const project = yaml.load(content);
+            
+            // Add GitHub URL for convenience
+            project.github_url = `https://github.com/${project.repo}`;
+            
+            projects.push(project);
+          }
+          
+          // Sort by updated date descending
+          projects.sort((a, b) => new Date(b.updated) - new Date(a.updated));
+          
+          // Group by status
+          const byStatus = {};
+          for (const p of projects) {
+            byStatus[p.status] = byStatus[p.status] || [];
+            byStatus[p.status].push(p.repo);
+          }
+          
+          const index = {
+            generated: new Date().toISOString(),
+            count: projects.length,
+            by_status: byStatus,
+            projects: projects
+          };
+          
+          fs.mkdirSync('api', { recursive: true });
+          fs.writeFileSync('api/index.json', JSON.stringify(index, null, 2));
+          console.log('Built index with', projects.length, 'projects');
+          EOF
+          
+      - name: Commit index
+        run: |
+          git config user.name "spores-bot"
+          git config user.email "bot@spores"
+          git add api/index.json
+          git diff --staged --quiet || git commit -m "Update API index"
+          git push

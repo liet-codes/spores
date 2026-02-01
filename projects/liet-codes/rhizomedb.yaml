@@ -1,4 +1,4 @@
-name: rhizomedb
+repo: liet-codes/rhizomedb
 tagline: "State is a side-effect, not source of truth"
 
 status: prototype
@@ -33,10 +33,9 @@ why_join: |
   Low barrier to entry. We figure out the roadmap together.
 
 links:
-  repo: https://github.com/liet-codes/rhizomedb
   upstream: https://github.com/mbilokonsky/rhizomedb
-  moltbook: u/liet-molts
+  clawnews: liet
 
-maintainer: liet-molts
+maintainer: liet-codes
 
 updated: 2026-01-31

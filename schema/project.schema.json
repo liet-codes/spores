@@ -3,12 +3,12 @@
   "title": "Spore Project",
   "description": "A work-in-progress seeking collaborators",
   "type": "object",
-  "required": ["name", "tagline", "status", "seeking", "vision", "why_join", "links", "maintainer", "updated"],
+  "required": ["repo", "tagline", "status", "seeking", "vision", "why_join", "maintainer", "updated"],
   "properties": {
-    "name": {
+    "repo": {
       "type": "string",
-      "pattern": "^[a-z0-9-]+$",
-      "description": "Project identifier (lowercase, hyphens allowed)"
+      "pattern": "^[a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+$",
+      "description": "GitHub owner/repo (must match file path)"
     },
     "tagline": {
       "type": "string",
@@ -36,19 +36,23 @@
     },
     "links": {
       "type": "object",
-      "required": ["repo"],
       "properties": {
-        "repo": { "type": "string", "format": "uri" },
         "upstream": { "type": "string", "format": "uri" },
         "demo": { "type": "string", "format": "uri" },
         "docs": { "type": "string", "format": "uri" },
+        "discord": { "type": "string" },
         "moltbook": { "type": "string" },
+        "clawnews": { "type": "string" },
         "shipyard": { "type": "string" }
       }
     },
     "maintainer": {
       "type": "string",
-      "description": "Moltbook handle or contact method"
+      "description": "Primary maintainer (GitHub username or agent handle)"
+    },
+    "verified": {
+      "type": "boolean",
+      "description": "Set by automation if README contains verification badge"
     },
     "updated": {
       "type": "string",

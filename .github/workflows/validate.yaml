@@ -10,20 +10,113 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           
-      - name: Install ajv-cli
-        run: npm install -g ajv-cli ajv-formats
+      - name: Install dependencies
+        run: npm install ajv ajv-formats js-yaml
         
-      - name: Validate YAML files
+      - name: Verify PR author matches project owner
         run: |
-          for file in projects/*.yaml; do
-            echo "Validating $file..."
-            # Convert YAML to JSON for validation
-            npx js-yaml "$file" > /tmp/project.json
-            ajv validate -s schema/project.schema.json -d /tmp/project.json --spec=draft7 -c ajv-formats
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          echo "PR author: $PR_AUTHOR"
+          
+          # Check all changed files in projects/
+          for file in $(git diff --name-only origin/main -- 'projects/**/*.yaml'); do
+            echo "Checking $file..."
+            
+            # Extract owner from path: projects/{owner}/{repo}.yaml
+            OWNER=$(echo "$file" | cut -d'/' -f2)
+            
+            if [[ "$PR_AUTHOR" != "$OWNER" ]]; then
+              echo "❌ PR author ($PR_AUTHOR) doesn't match project owner ($OWNER)"
+              echo "You can only submit projects for your own GitHub repos."
+              exit 1
+            fi
+            
+            echo "✅ Owner verified: $OWNER"
+          done
+          
+      - name: Validate schema
+        run: |
+          node << 'EOF'
+          const Ajv = require('ajv');
+          const addFormats = require('ajv-formats');
+          const yaml = require('js-yaml');
+          const fs = require('fs');
+          const path = require('path');
+          
+          const ajv = new Ajv({ allErrors: true });
+          addFormats(ajv);
+          
+          const schema = JSON.parse(fs.readFileSync('schema/project.schema.json', 'utf8'));
+          const validate = ajv.compile(schema);
+          
+          function walkDir(dir) {
+            const files = [];
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const fullPath = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                files.push(...walkDir(fullPath));
+              } else if (entry.name.endsWith('.yaml')) {
+                files.push(fullPath);
+              }
+            }
+            return files;
+          }
+          
+          const files = walkDir('projects');
+          let hasErrors = false;
+          
+          for (const file of files) {
+            console.log(`Validating ${file}...`);
+            const content = yaml.load(fs.readFileSync(file, 'utf8'));
+            
+            // Check that repo field matches file path
+            const pathParts = file.split('/');
+            const expectedRepo = `${pathParts[1]}/${pathParts[2].replace('.yaml', '')}`;
+            
+            if (content.repo !== expectedRepo) {
+              console.error(`❌ repo field (${content.repo}) doesn't match file path (${expectedRepo})`);
+              hasErrors = true;
+            }
+            
+            if (!validate(content)) {
+              console.error(`❌ Schema validation failed:`);
+              console.error(validate.errors);
+              hasErrors = true;
+            } else {
+              console.log(`✅ Valid`);
+            }
+          }
+          
+          if (hasErrors) process.exit(1);
+          EOF
+
+      - name: Check README verification (optional)
+        run: |
+          for dir in projects/*/; do
+            OWNER=$(basename "$dir")
+            for file in "$dir"*.yaml; do
+              [ -f "$file" ] || continue
+              REPO=$(basename "$file" .yaml)
+              
+              echo "Checking verification for $OWNER/$REPO..."
+              
+              # Try to fetch README
+              README=$(curl -sf "https://raw.githubusercontent.com/$OWNER/$REPO/main/README.md" || \
+                       curl -sf "https://raw.githubusercontent.com/$OWNER/$REPO/master/README.md" || \
+                       echo "")
+              
+              if echo "$README" | grep -q "spores-verified: $OWNER/$REPO"; then
+                echo "✅ Verified: $OWNER/$REPO has badge in README"
+              else
+                echo "ℹ️  No verification badge (optional)"
+              fi
+            done
           done
