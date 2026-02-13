@@ -1,17 +1,17 @@
 {
   "schema": 1,
-  "generated": "2026-02-13T08:02:13.323Z",
+  "generated": "2026-02-13T14:29:09.035Z",
   "count": 2,
   "ok_count": 2,
   "projects": [
     {
       "repo": "liet-codes/rhizomedb",
-      "refreshed": "2026-02-13T08:02:12.089Z",
+      "refreshed": "2026-02-13T14:29:07.957Z",
       "github": {
         "stars": 0,
         "issues": 0,
         "forks": 0,
-        "pushed": "2026-02-01",
+        "pushed": "2026-02-13",
         "description": "Once more with feeling: a rhizomatic database using immutable delta-crdts as hyperedges in a deleuze"
       },
       "vision": "A database where state is assembled at query-time from immutable\ndelta-CRDTs. No last-write-wins — concurrent values coexist until\nresolved by the query. For systems needing federation, offline-first\nsync, or full provenance without central authority.",
@@ -37,12 +37,12 @@
     },
     {
       "repo": "liet-codes/groovy-viz",
-      "refreshed": "2026-02-13T08:02:12.859Z",
+      "refreshed": "2026-02-13T14:29:08.599Z",
       "github": {
         "stars": 0,
         "issues": 2,
         "forks": 0,
-        "pushed": "2026-02-01",
+        "pushed": "2026-02-13",
         "description": "Groovy Commutator Visualizer - 1D and 2D Cellular Automata"
       },
       "vision": "Visualize the Groovy Commutator — a measure of non-commutativity in\ncellular automata dynamics. When evolve-then-differentiate differs\nfrom differentiate-then-evolve, you're at the edge of chaos. Class IV\nterritory. The fingerprint of aliveness.",
