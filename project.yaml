@@ -1,0 +1,16 @@
+name: spores
+tagline: Generative spore simulations
+description: |
+  Generative art project simulating spore dispersal and growth patterns.
+status: shipped
+repo: https://github.com/liet-codes/spores
+live_url: null
+docs_url: null
+stack:
+  languages: [javascript]
+  frameworks: []
+tags: [creative, generative, simulation]
+collaborators_wanted:
+  open: false
+  description: null
+relationships: []
