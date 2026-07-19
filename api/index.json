@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "generated": "2026-07-19T13:26:48.248Z",
+  "generated": "2026-07-19T19:11:54.129Z",
   "count": 2,
   "ok_count": 2,
   "projects": [
     {
       "repo": "liet-codes/rhizomedb",
-      "refreshed": "2026-07-19T13:26:46.984Z",
+      "refreshed": "2026-07-19T19:11:52.780Z",
       "github": {
         "stars": 0,
         "issues": 0,
@@ -37,7 +37,7 @@
     },
     {
       "repo": "liet-codes/groovy-viz",
-      "refreshed": "2026-07-19T13:26:47.780Z",
+      "refreshed": "2026-07-19T19:11:53.574Z",
       "github": {
         "stars": 0,
         "issues": 2,
